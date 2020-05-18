@@ -18,15 +18,30 @@
         <el-col :span="4">
           <el-button type="primary" @click="addDialogVisible = true">添加法律法规</el-button>
         </el-col>
+        <el-col :span="4">
+          <el-button type="primary" @click="addSwitch = true">法律法规转换</el-button>
+        </el-col>
       </el-row>
 
-      <!-- <el-row>
-        <el-col>
-          <el-radio-group v-model="radio2" size="medium">
-            <el-radio-button :label="item" v-for="(item,index) in categories[0].specific" :key="index"></el-radio-button>
-          </el-radio-group>
-        </el-col>
-      </el-row> -->
+      <el-dialog title="转换" :visible.sync="addSwitch" width="30%">
+        <el-form :model="addForm" ref="addFormRef" label-width="70px">
+          <el-form-item label="法律法规">
+            <el-upload class="upload-demo" :action="switchUrl1" :on-success="handleSuccess1" :show-file-list="false">
+              <el-button size="small" type="primary">点击上传</el-button>
+            </el-upload>
+          </el-form-item>
+          <el-form-item label="标准规范">
+            <el-upload class="upload-demo" :action="switchUrl2" :on-success="handleSuccess1" :show-file-list="false">
+              <el-button size="small" type="primary">点击上传</el-button>
+            </el-upload>
+          </el-form-item>
+        </el-form>
+
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="addSwitch = false">取 消</el-button>
+          <el-button type="primary" @click="dialogVisible = false">确 定</el-button>
+        </span>
+      </el-dialog>
 
       <el-card style="width: 50%;">
         <div v-for="(item,index) in categories" :key="index">
@@ -191,6 +206,8 @@
         editDialogVisible: false,
         // 控制删除对话框的显示与隐藏
         deleteDialogVisible: false,
+        // 控制转换对话框的
+        addSwitch: false,
         // 添加的表单数据
         addForm: {
           title: '',
@@ -202,6 +219,9 @@
           category: '',
           specific: '',
           synopsis: '',
+          filePath: ''
+        },
+        switchFile: {
           filePath: ''
         },
         editForm: {},
@@ -230,6 +250,8 @@
         addFormRules: {},
         uploadUrl: 'http://40.73.72.56:1311/nacos-provide/upload',
         titleOnce: false,
+        switchUrl1: 'http://40.73.72.56:1311/switchToExcel/legal/upload',
+        switchUrl2: 'http://40.73.72.56:1311/switchToExcel/JTJ/upload',
         filter: [
           '', '', ''
         ],
@@ -242,11 +264,9 @@
     methods: {
       // 添加或修改法律法规
       async addLegal() {
-        console.log(this.addForm)
         const {
           data: res
         } = await this.$http.post('addLegal', this.addForm)
-        console.log(res)
         if (res.status !== 0) {
           return this.$message.error('操作失败')
         }
@@ -260,7 +280,6 @@
       },
       // 修改
       async showEditDialog(id) {
-        console.log(id)
         this.addDialogVisible = true
         const {
           data: res
@@ -293,7 +312,6 @@
             type: 'success',
             message: '删除成功!'
           })
-
           // this.getLegalList()
           location.reload()
         }).catch(() => {
@@ -330,7 +348,6 @@
       },
       // 检查标题是否唯一
       async checkName(title) {
-        console.log(title)
         if (title === '') {
           return
         }
@@ -342,7 +359,6 @@
           }
         })
         if (res.status === -2) {
-          console.log(res.date)
           for (const legalTitle of res.date) {
             if (title === legalTitle) {
               this.titleOnce = true
@@ -381,27 +397,22 @@
         // a和b指向的是同一个内存地址。
         // 可以先把a转换成字符串，然后在转换成对象，代码如下：
         this.legalList = JSON.parse(JSON.stringify(this.tempList))
-        console.log('集合=' + this.legalList)
+        
         const newList = []
         // 带索引的循环方式
-        this.legalList.some((item, i) => {
-          console.log('具体分类为：' + item.specific)
-          for (const str of this.filter) {
-            console.log('筛选条件为：' + str)
+        this.legalList.some((item, i) => {          
+          for (const str of this.filter) {           
             if (str !== '空' && str !== '') {
               if (item.specific === str) {
-                newList.push(item)
-                console.log(newList)
+                newList.push(item)               
               }
             }
           }
         })
-        // 对象判空
-        console.log(Object.keys(newList).length === 0)
+        // 对象判空       
         if (Object.keys(newList).length !== 0) {
           this.legalList = JSON.parse(JSON.stringify(newList))
-        }
-        console.log('结果=' + this.legalList)
+        }        
       },
       XHRLoadLoadFile: (id) => {
         const xhr = new XMLHttpRequest()
@@ -414,16 +425,13 @@
           if (xhr.readyState === 4 && xhr.status === 200) {
             const blob = new Blob([xhr.response])
             const url = window.URL.createObjectURL(blob)
-
             // 创建一个a标签元素，设置下载属性，点击下载，最后移除该元素
             const link = document.createElement('a')
             link.href = url
             link.style.display = 'none'
             // 取出下载文件名
-            const fileName = xhr.getResponseHeader('filename')
-            console.log(fileName)
+            const fileName = xhr.getResponseHeader('filename')            
             const downloadFileName = decodeURIComponent(fileName)
-
             link.setAttribute('download', downloadFileName)
             link.click()
             window.URL.revokeObjectURL(url)
@@ -431,14 +439,12 @@
         }
       },
       // 监听 pagesize 改变的事件
-      handleSizeChange(newSize) {
-        // console.log(newSize)
+      handleSizeChange(newSize) {       
         this.queryInfo.pageSize = newSize
         this.getLegalList1()
       },
       // 监听 页码值 改变的事件
-      handleCurrentChange(newPage) {
-        console.log(newPage)
+      handleCurrentChange(newPage) {        
         this.queryInfo.pageNum = newPage
         this.getLegalList1()
       },
@@ -454,8 +460,14 @@
       handleSuccess(response) {
         this.$message.success('上传成功')
         const path = response.date
-        this.addForm.filePath = path
-        console.log(this.addForm)
+        this.addForm.filePath = path        
+      },
+      handleSuccess1(response) {
+        if (response.code !== 200) {
+          return this.$message.error('操作失败,请重试')
+        } 
+        this.$message.success('上传成功')
+        this.addSwitch = false      
       }
     }
   }

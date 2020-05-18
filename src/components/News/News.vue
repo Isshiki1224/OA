@@ -12,7 +12,7 @@
       <el-row :gutter="20" style="margin-bottom: 20px;">
         <el-col :span="8">
           <el-input placeholder="请输入内容" v-model="queryInfo.searchContent" clearable @keyup.enter.native="getNewsList">
-            <el-button slot="append" icon="el-icon-search" @click="getNewsList" ></el-button>
+            <el-button slot="append" icon="el-icon-search" @click="getNewsList"></el-button>
           </el-input>
         </el-col>
         <el-col :span="4">
@@ -80,7 +80,7 @@
         </el-form-item>
         <el-form-item label="内容" prop="content">
           <label>（图片分辨率推荐800 * 450 不得过大！请自行准备符合要求的图片）</label>
-          <quill-editor class="ql-editor" v-model="addForm.content">
+          <quill-editor class="ql-editor" v-model="addForm.content" :options="editorOption">
           </quill-editor>
         </el-form-item>
         <el-form-item label="发布时间" prop="publicDate">
@@ -99,6 +99,22 @@
             </el-row>
           </el-upload>
         </el-form-item>
+        <el-form-item label="附件上传" prop="appendix.filePath">
+          <el-upload class="upload-demo" :action="uploadAppendix" :on-success="appendixHandleSuccess"
+            :show-file-list="false">
+            <el-row>
+              <el-col :span="20">
+                <el-input v-model="addForm.appendix.filePath"></el-input>
+              </el-col>
+              <el-col :span="4">
+                <el-button size="small" type="primary">点击上传</el-button>
+              </el-col>
+            </el-row>
+            <label size="small" type="primary">(以上传的附件的名称为标题，请提前修改正确的附件名称)</label>
+          </el-upload>
+        </el-form-item>
+        <!-- <a @click="download">下载</a> -->
+        <!-- <a :href="'http://40.73.72.56:1311/newsManagement/download?filePath=' + addForm.appendixPath">下载</a> -->
       </el-form>
       <!-- 底部区域 -->
       <span slot="footer" class="dialog-footer">
@@ -112,6 +128,7 @@
 
 <script>
   export default {
+
     data() {
       return {
         // 获取列表的参数对象
@@ -130,9 +147,16 @@
           category: '',
           publicDate: '',
           filePath: '',
-          synopsis: ''
+          synopsis: '',
+          appendix: {
+            title: '',
+            filePath: ''
+          }
         },
+        // excel 上传
         uploadUrl: 'http://40.73.72.56:1311/newsManagement/upload',
+        // 附件上传
+        uploadAppendix: 'http://40.73.72.56:1311/newsManagement/uploadAppendix',
         // 控制添加新闻对话框的显示与隐藏
         addDialogVisible: false,
         options: [{
@@ -147,7 +171,65 @@
             label: '最新政策',
             value: 'nNews'
           }
-        ]
+        ],
+        // 富文本编辑器
+        editorOption: {
+          modules: {
+            toolbar: [
+              ['bold', 'italic', 'underline'], // toggled buttons
+              ['blockquote', 'code-block'],
+              ['image'],
+              [{
+                header: 1
+              }, {
+                header: 2
+              }], // custom button values
+              [{
+                list: 'ordered'
+              }, {
+                list: 'bullet'
+              }],
+              [{
+                script: 'sub'
+              }, {
+                script: 'super'
+              }], // superscript/subscript
+              [{
+                indent: '-1'
+              }, {
+                indent: '+1'
+              }], // outdent/indent
+              [{
+                direction: 'rtl'
+              }], // text direction
+
+              [{
+                size: ['small', false, 'large', 'huge']
+              }], // custom dropdown
+              // [{
+              //   size: ['10px', '14px', '18px', '22px', '26px', '32px', '48px']
+              // }],
+              [{
+                header: [1, 2, 3, 4, 5, 6, false]
+              }],
+
+              [{
+                color: []
+              }, {
+                background: []
+              }], // dropdown with defaults from theme
+              [{
+                font: []
+              }],
+              [{
+                align: []
+              }],
+
+              ['clean']
+            ]
+          }
+        }
+
       }
     },
     // 页面加载完毕后触发的事件
@@ -161,8 +243,8 @@
       // 获取新闻列表
       async getNewsList() {
         if (this.queryInfo.searchContent !== '') {
-            this.queryInfo.pageNum = 1
-          }
+          this.queryInfo.pageNum = 1
+        }
         const {
           data: res
         } = await this.$http.get('http://40.73.72.56:1311/newsManagement/news', {
@@ -170,8 +252,6 @@
         })
         this.newsList = res.data
         this.total = res.totalPage
-        console.log(res)
-        console.log(this.newsList)
       },
       // 翻页
       async getNewsList1() {
@@ -182,12 +262,8 @@
         })
         this.newsList = res.data
         this.total = res.totalPage
-        console.log(res)
-        console.log(this.newsList)
       },
       showDialogVisible() {
-        console.log(this.addForm)
-        console.log(this.addForm.id)
         this.addDialogVisible = true
         if (this.addForm.id !== undefined) {
           return this.$message.error('操作失败,请重试')
@@ -195,24 +271,20 @@
       },
       // 添加/修改
       async addProjectNews() {
-        console.log(this.addForm)
         const {
           data: res
         } = await this.$http.post('http://40.73.72.56:1311/newsManagement/add', this.addForm)
-        console.log(res)
         if (res.status !== 0) {
           return this.$message.error('操作失败')
         }
         // this.addForm.publicDate = this.getDate()
         this.addDialogVisible = false
-
         this.$message.success('操作成功')
         // this.getNewsList()
         location.reload()
       },
       // 修改
       async showEditDialog(id) {
-        console.log(id)
         this.addDialogVisible = true
         const {
           data: res
@@ -222,7 +294,6 @@
           }
         })
         this.addForm = res.data
-        console.log(this.addForm)
       },
       showDeleteDialog(id) {
         this.deleteDialogVisible = true
@@ -245,7 +316,6 @@
             type: 'success',
             message: '删除成功!'
           })
-
           // this.getNewsList()
           location.reload()
         }).catch(() => {
@@ -271,7 +341,6 @@
       },
       // 监听 页码值 改变的事件
       handleCurrentChange(newPage) {
-        console.log(newPage)
         this.queryInfo.pageNum = newPage
         this.getNewsList1()
       },
@@ -285,7 +354,13 @@
         this.$message.success('上传成功')
         const path = response.data
         this.addForm.filePath = path
-        console.log(this.addForm)
+      },
+      // 附件上传成功钩子函数
+      appendixHandleSuccess(response) {
+        this.$message.success('上传成功')
+        const path = response.data.filePath
+        this.addForm.appendix.filePath = path
+        this.addForm.appendix.title = response.data.title
       },
       getDate() {
         const date = new Date()
